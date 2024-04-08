@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt"
 	"github.com/kingztech2019/blogbackend/database"
 	"github.com/kingztech2019/blogbackend/models"
 	"github.com/kingztech2019/blogbackend/util"
@@ -71,22 +72,26 @@ func Register(c *fiber.Ctx) error {
 }
 
 func Login(c *fiber.Ctx) error {
-	var data map[string]string
+	var data struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
 	if err := c.BodyParser(&data); err != nil {
-		fmt.Println("unable to parse body")
+		fmt.Println("tidak dapat mem-parse body")
+		return err
 	}
 	var user models.User
-	database.DB.Where("email=?", data["email"]).First(&user)
-	if user.Id == 0 {
+	if err := database.DB.Where("email=?", data.Email).First(&user).Error; err != nil {
 		c.Status(404)
 		return c.JSON(fiber.Map{
-			"message": "Email Address doesn't exit, kindly create an account",
+			"message": "Alamat Email tidak ditemukan, silakan buat akun",
 		})
 	}
-	if err := user.ComparePassword(data["password"]); err != nil {
+
+	if err := user.ComparePassword(data.Password); err != nil {
 		c.Status(404)
 		return c.JSON(fiber.Map{
-			"message": "incorrect password",
+			"message": "kata sandi salah",
 		})
 	}
 
@@ -108,4 +113,8 @@ func Login(c *fiber.Ctx) error {
 		"user":    user,
 	})
 
+}
+
+type claims struct {
+	jwt.StandardClaims
 }
